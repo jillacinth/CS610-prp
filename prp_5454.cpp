@@ -4,6 +4,7 @@
 #include <cstring>
 #include <cmath>
 #include <vector>
+#include <string>
 using namespace std;
 
 using std::vector;
@@ -15,37 +16,48 @@ class Lexicon {
         char* A;
         int slotsUsed; //to prevent collision
         int indexA;
+        int sizeofA;
     
     Lexicon(int N) { //initializes Lexicon
         this->N = N;
         this->slotsUsed = 0;
         this->T = new int[N];
         for (int i = 0; i < N; i++) {
-            this->T[i] = 0; //-1 means empty
+            this->T[i] = -1; //-1 means empty
         }
-        this->A = new char[N]; //will expand A
+        this->sizeofA = this->N*10;
+        this->A = new char[this->sizeofA]; //will expand A
         // for (int i = 0; i < N; i++) {
         //     this->A[i] = '-'; //empty string
         // }
-        int indexA = 0;
+        this->indexA = 0;
 
     }
 
-    void increaseASize(){ //doubles size of A
-        char* temp = new char[sizeof(this->A)*2];
-        for (int i = 0; i < sizeof(this->A); i++){
+    ~Lexicon(){
+        delete[] this->T;
+    }
+
+    void increaseASize() { //doubles size of A
+        char* temp = new char[ this->sizeofA * 2 + 1];
+        for (int i = 0; i < sizeofA; i++) {
             temp[i] = this->A[i];
         }
+        delete[] this->A;
         this->A = temp;
+        this->sizeofA = 2*this->sizeofA + 1;
+        return;
     }
 
-    void increaseTSize(){ //doubles size of T
-        int* temp = new int[N*2];
-        for (int i = 0; i < N; i++){
+    void increaseTSize() { //doubles size of T
+        int* temp = new int[this->N * 2];
+        for (int i = 0; i < this->N; i++) {
             temp[i] = this->T[i];
         }
+        delete[] this->T;
         this->T = temp;
         this->N *= 2;
+        return;
     }
 
     int h(string key) {
@@ -56,7 +68,7 @@ class Lexicon {
         return sum;
     }
     int QuadProbing(int h, int i) const { //h(k,i) = (h'(k) + i^2) mod N
-        return (h + i*i) % N;
+        return (h + i*i) % this->N;
     }
 
     void Insert(string str) {
@@ -66,11 +78,11 @@ class Lexicon {
             }
             for (int i = 0; i < this->N; i++) {
                 int hashNum = QuadProbing(h(str), i);
-                if (this->T[hashNum] == -1) {
+                if (this->T[hashNum] == -1 || this->T[hashNum] == -2 ) {
                     //means empty
                     this->T[hashNum] = this->indexA;
                     for (int count = 0; count < str.length(); count++) {
-                        if (this->indexA >= sizeof(this->A))
+                        if (this->indexA >= this->sizeofA)
                         {
                             increaseASize();
                         }
@@ -80,21 +92,18 @@ class Lexicon {
                     this->A[this->indexA] = '\0';
                     this->indexA++;
                     this->slotsUsed++;
-                    break;
+                    return;
                 }
             }
         }
+        return;
     }
     void Delete(string str) {
-        if (Search(str) > -1){
-            int indexHash = Search(str);
-            int indexChar = this->A[this->T[indexHash]];
-            for (int i = indexChar+str.length()+1; i >= indexChar; i++){
-                this->A[i] = '-';
-                this->indexA--; //not sure if this is needed yet
-                this->slotsUsed--;
-            }
+        int hashIndex = Search(str);
+        if (hashIndex > -1){
+            this->T[hashIndex] = -2;
         }
+        return;
     }
 
 
@@ -102,7 +111,9 @@ class Lexicon {
         string strWithEnding = str + '\0';
        for (int i = 0; i < this->N; i++) {
             int hashNum = QuadProbing(h(str), i);
-            if (this->T[hashNum] <= 0) {
+            if (this->T[hashNum] == -2) {
+                return -1;
+            } else if (this->T[hashNum] >= 0) {
                 //means has value
                 int stringEnd = this->T[hashNum]+strWithEnding.length();
                 int strIndex = 0;
@@ -123,22 +134,25 @@ class Lexicon {
 
 
     string Print() {
-        string printT;
-        string printA;
+        string printHash = "T (hashes) \n";
 
         for (int i = 0; i < this->N; i++) {
-            printT += this->T[i];
+           printHash += std::to_string(this->T[i]);
+           printHash += "\n";
         }
+
+        printHash += "A (chars)";
 
         for (int i = 0; i < this->indexA; i++){
             if (this->A[i]=='\0') {
-                printA += '\\';
+                printHash += '\\';
             } else {
-                printA += this->A[i];
+                printHash += this->A[i];
             }
         }
 
-        return printT + '\n' + printA;
+        return printHash;
+
     } 
     //Create
     bool Empty() {
@@ -165,6 +179,17 @@ class Lexicon {
 int main(int argc, char* argv[]) {
     Lexicon* test = new Lexicon(10);
     test->Insert("word");
-    test->Print();
+    test->Insert("cum");
+    test->Delete("cum");
+    test->Insert("cum");
+    //test->Insert("Patrick");
+    //test->Insert("Jill");
+    //test->Insert("googoogagaa");
 
+    string tryprint = test->Print();
+    
+    cout << tryprint << endl;
+    // test->Insert("word");
+    // string testprint1 = test->Print();
+    // cout << testprint1 << endl;
 }
