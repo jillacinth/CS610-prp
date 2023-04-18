@@ -1,5 +1,6 @@
 //insert, delete, search, print, and create the Lexicon with a specified size.
 #include <iostream>
+#include <fstream>
 #include <list>
 #include <cstring>
 #include <cmath>
@@ -25,7 +26,7 @@ class Lexicon {
         for (int i = 0; i < N; i++) {
             this->T[i] = -1; //-1 means empty
         }
-        this->sizeofA = this->N*10;
+        this->sizeofA = this->N*15;
         this->A = new char[this->sizeofA]; //will expand A
         // for (int i = 0; i < N; i++) {
         //     this->A[i] = '-'; //empty string
@@ -50,14 +51,55 @@ class Lexicon {
     }
 
     void increaseTSize() { //doubles size of T
-        int* temp = new int[this->N * 2];
-        for (int i = 0; i < this->N; i++) {
-            temp[i] = this->T[i];
-        }
-        delete[] this->T;
-        this->T = temp;
+        // int* temp = new int[this->N * 2];
+        // for (int i = 0; i < this->N; i++) {
+        //     temp[i] = this->T[i];
+        // }
+        // for (int i = this->N; i < this->N*2; i++) {
+        //     temp[i] = -1;
+        // }
+        // delete[] this->T;
+        // this->T = temp;
+        // this->N *= 2;
+        // return;
+
         this->N *= 2;
-        return;
+        delete this->T;
+        this->T = new int[this->N];
+        for(int i = 0; i < this->N; i++){
+            this->T[i] = -1;
+        }
+        this->slotsUsed = 0;
+        char* aTemp = new char[this->sizeofA];
+        for(int i = 0; i<this->sizeofA; i++){
+            aTemp[i] = this->A[i];
+        }
+        int max = this->indexA;
+        this->indexA = 0;
+        this->A = new char[this->indexA];
+           
+        string wordsUsed = "";
+        for(int i = 0; i<max; i++){
+            if(aTemp[i] != '\0'){
+                wordsUsed += aTemp[i];
+            }
+            else{
+               int len = wordsUsed.length();
+                if(wordsUsed[0] == '*'){
+                    int limit = this->indexA + len;
+                    for(; this->indexA<limit; this->indexA++){
+                        this->A[this->indexA] = '*';
+                    }
+                    this->A[this->indexA] = '\0';
+                    this->indexA++;
+                    wordsUsed = "";
+                }
+                else{
+                    this->Insert(wordsUsed);
+                    wordsUsed = "";
+                }
+            }
+        }
     }
 
     int h(string key) {
@@ -100,6 +142,11 @@ class Lexicon {
     }
     void Delete(string str) {
         int hashIndex = Search(str);
+        int aDelete = this->T[hashIndex];
+        //cout << this->A[aDelete] << endl;
+        for (int i = aDelete; i < aDelete + str.length(); i++ ) {
+            this->A[i] = '*';
+        }
         if (hashIndex > -1){
             this->T[hashIndex] = -2;
         }
@@ -108,16 +155,20 @@ class Lexicon {
 
 
     int Search(string str) {
-        string strWithEnding = str + '\0';
+        //string strWithEnding = str + '\0';
        for (int i = 0; i < this->N; i++) {
             int hashNum = QuadProbing(h(str), i);
             if (this->T[hashNum] == -2) {
                 return -1;
             } else if (this->T[hashNum] >= 0) {
                 //means has value
-                int stringEnd = this->T[hashNum]+strWithEnding.length();
+                cout << hashNum << endl;
+                cout << this->T[hashNum] << endl;
+                int stringEnd = this->T[hashNum]+str.length();
                 int strIndex = 0;
                 for (int count = this->T[hashNum]; count <= stringEnd; count++) {
+                    cout << this->A[count] << endl;
+                    cout << count << endl;
                     if (count == stringEnd && this->A[count] == '\0') {
                         return hashNum; //returns the index of hash
                     }
@@ -176,15 +227,116 @@ class Lexicon {
 
 };
 
+class Hashing{
+    public:
+
+        string filename;
+        Lexicon* test;
+
+        Hashing(string filename){
+            this->filename = filename;
+        }
+
+        void Create(int N){
+            test = new Lexicon(N);
+            return;
+        }
+
+        int Search(string str){
+            return(test->Search(str));
+        }
+
+        string Print(){
+            return(test->Print());
+        }
+
+        bool Empty(){
+            return(test->Empty());
+        }
+
+        bool Full(){
+            return(test->Full());
+        }
+        
+        void Delete(string str){
+            test->Delete(str);
+            return;
+        }
+
+        void Insert(string str){
+            test->Insert(str);
+            return;
+        }
+        
+        void Batch(){
+            ifstream inputFile;
+            //we have filename
+            string line;
+            inputFile.open(filename);
+            if(inputFile.is_open()){
+                while(getline(inputFile,line)){
+
+                    string command = line.substr(0, line.find(" "));
+
+                    if(command.compare("10") == 0){
+                        string str = line.substr(command.length() + 1, line.length() - 1);
+                        Insert(str);
+                        int index = Search(str);
+                        cout << str + "\tadded to slot " + to_string(index) << endl;
+                    } else if(command.compare("11") == 0){
+                        string str = line.substr(command.length() + 1, line.length() - 1);
+                        int index = Search(str);
+                        Delete(str);
+                        cout << str + "\tdeleted from slot " + to_string(index) << endl;
+                    } else if(command.compare("12") == 0){
+                        string str = line.substr(command.length() + 1, line.length() - 1);
+                        int index = Search(str);
+                        cout << str + " ";
+                        if(index == -1){
+                            cout << "\tnot found" << endl;
+                        }
+                        else{
+                            cout << "\tfound at slot " + to_string(index) << endl;
+                        }
+                    } else if(command.compare("13") == 0){
+                        cout << Print() << endl ;
+                    } else if(command.compare("14") == 0){
+                        string str = line.substr(command.length() + 1, line.length() - 1);
+                        int N = stoi(str);
+                        Create(N);
+                    } else if(command.compare("15") == 0){
+                        continue;
+                    }
+                }
+
+                inputFile.close();
+            }
+            return;
+        }
+};
+
 int main(int argc, char* argv[]) {
     Lexicon* test = new Lexicon(10);
     test->Insert("word");
     test->Insert("cum");
     test->Delete("cum");
     test->Insert("cum");
-    //test->Insert("Patrick");
-    //test->Insert("Jill");
-    //test->Insert("googoogagaa");
+    test->Insert("Patrick");
+    test->Insert("Jill");
+    test->Insert("googoogagaa");
+    test->Insert("happybirthday");
+    test->Insert("hello");
+    test->Insert("phrase");
+    test->Insert("school");
+    test->Insert("car");
+    test->Insert("school");
+    test->Insert("television");
+    
+    cout << "find hello" << endl;
+    cout << test->Search("hello") << endl;
+
+    // test->Delete("hello");
+    // test->Insert("cheese");
 
     string tryprint = test->Print();
     
