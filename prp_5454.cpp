@@ -1,4 +1,4 @@
-//insert, delete, search, print, and create the Lexicon with a specified size.
+//Jillian Jacinto: 5454
 #include <iostream>
 #include <fstream>
 #include <list>
@@ -40,66 +40,47 @@ class Lexicon {
     }
 
     void increaseASize() { //doubles size of A
-        char* temp = new char[ this->sizeofA * 2 + 1];
-        for (int i = 0; i < sizeofA; i++) {
-            temp[i] = this->A[i];
+        char* temp = this->A;
+        int oldsizeA = this->sizeofA;
+        this->sizeofA = this->sizeofA*2 + 1;
+        this->A = new char[this->sizeofA];
+        for (int i = 0; i < oldsizeA; i++) {
+            this->A[i] = temp[i];
         }
-        delete[] this->A;
-        this->A = temp;
-        this->sizeofA = 2*this->sizeofA + 1;
         return;
     }
 
-    void increaseTSize() { //doubles size of T
-        // int* temp = new int[this->N * 2];
-        // for (int i = 0; i < this->N; i++) {
-        //     temp[i] = this->T[i];
-        // }
-        // for (int i = this->N; i < this->N*2; i++) {
-        //     temp[i] = -1;
-        // }
-        // delete[] this->T;
-        // this->T = temp;
-        // this->N *= 2;
-        // return;
-
+   void increaseTSize() { // doubles size of T and rehashes existing keys and values
+        int oldN = this->N;
+        int* oldT = this->T;
+    
         this->N *= 2;
-        delete this->T;
         this->T = new int[this->N];
-        for(int i = 0; i < this->N; i++){
-            this->T[i] = -1;
+        for (int i = 0; i < this->N; i++) {
+            this->T[i] = -1; // initialize new table to empty
         }
         this->slotsUsed = 0;
-        char* aTemp = new char[this->sizeofA];
-        for(int i = 0; i<this->sizeofA; i++){
-            aTemp[i] = this->A[i];
-        }
-        int max = this->indexA;
-        this->indexA = 0;
-        this->A = new char[this->indexA];
-           
-        string wordsUsed = "";
-        for(int i = 0; i<max; i++){
-            if(aTemp[i] != '\0'){
-                wordsUsed += aTemp[i];
-            }
-            else{
-               int len = wordsUsed.length();
-                if(wordsUsed[0] == '*'){
-                    int limit = this->indexA + len;
-                    for(; this->indexA<limit; this->indexA++){
-                        this->A[this->indexA] = '*';
-                    }
-                    this->A[this->indexA] = '\0';
-                    this->indexA++;
-                    wordsUsed = "";
+
+        char* oldA = this->A;
+        this->A = new char[this->sizeofA * 2 + 1]; // double size of A
+
+        // rehash existing keys and values into new 
+        for (int i = 0; i < oldN; i++) {
+            if (oldT[i] != -1 && oldT[i] != -2) {
+                string key;
+                int j = oldT[i];
+                while (oldA[j] != '\0') {
+                    key += oldA[j];
+                    j++;
                 }
-                else{
-                    this->Insert(wordsUsed);
-                    wordsUsed = "";
-                }
+                lexInsert(key); // insert existing key-value pair into new table
             }
         }
+
+        this->sizeofA = this->sizeofA * 2 + 1;
+
+        delete[] oldT;
+        delete[] oldA;
     }
 
     int h(string key) {
@@ -107,15 +88,15 @@ class Lexicon {
         for (int i = 0; i < key.length(); i++) {
             sum += key[i];
         }
-        return sum;
+        return sum - 4;
     }
     int QuadProbing(int h, int i) const { //h(k,i) = (h'(k) + i^2) mod N
         return (h + i*i) % this->N;
     }
 
-    void Insert(string str) {
-        if (Search(str) == -1){
-            if (Full()) {
+    void lexInsert(string str) {
+        if (lexSearch(str) == -1){
+            if (lexFull()) {
                 increaseTSize();
             }
             for (int i = 0; i < this->N; i++) {
@@ -140,43 +121,37 @@ class Lexicon {
         }
         return;
     }
-    void Delete(string str) {
-        int hashIndex = Search(str);
-        int aDelete = this->T[hashIndex];
-        //cout << this->A[aDelete] << endl;
-        for (int i = aDelete; i < aDelete + str.length(); i++ ) {
-            this->A[i] = '*';
-        }
-        if (hashIndex > -1){
+    void lexDelete(string str) {
+        int hashIndex = lexSearch(str);
+        if (hashIndex != -1) {
+            int aDelete = this->T[hashIndex];
+        // set the string in A to '*' characters to mark it as deleted
+            for (int i = aDelete; i < aDelete + str.length(); i++ ) {
+                this->A[i] = '*';
+            }
+        // set the hash table value to -2 to indicate that the slot is deleted
             this->T[hashIndex] = -2;
         }
         return;
     }
 
 
-    int Search(string str) {
-        //string strWithEnding = str + '\0';
-       for (int i = 0; i < this->N; i++) {
+    int lexSearch(string str) {
+        for (int i = 0; i < this->N; i++) {
             int hashNum = QuadProbing(h(str), i);
-            if (this->T[hashNum] == -2) {
+            if (this->T[hashNum] == -1) {
                 return -1;
             } else if (this->T[hashNum] >= 0) {
-                //means has value
-                cout << hashNum << endl;
-                cout << this->T[hashNum] << endl;
-                int stringEnd = this->T[hashNum]+str.length();
-                int strIndex = 0;
-                for (int count = this->T[hashNum]; count <= stringEnd; count++) {
-                    cout << this->A[count] << endl;
-                    cout << count << endl;
-                    if (count == stringEnd && this->A[count] == '\0') {
-                        return hashNum; //returns the index of hash
-                    }
-                    else if (this->A[count] != str[strIndex])
-                    {
-                        return -1; //means not found
-                    }
-                    strIndex++; 
+            // Get the string in A starting from the index in T
+                string key;
+                int j = this->T[hashNum];
+                while (this->A[j] != '\0') {
+                    key += this->A[j];
+                    j++;
+                } 
+            // Compare the string in A with the search string
+                if (key == str) {
+                    return hashNum;
                 }
             }
         }
@@ -184,49 +159,45 @@ class Lexicon {
     }
 
 
-    string Print() {
-        string printHash = "T (hashes) \n";
-
-        for (int i = 0; i < this->N; i++) {
-           printHash += std::to_string(this->T[i]);
-           printHash += "\n";
-        }
-
-        printHash += "A (chars)";
-
+    string lexPrint() {
+        string printHash = "T \tA:";
         for (int i = 0; i < this->indexA; i++){
             if (this->A[i]=='\0') {
-                printHash += '\\';
+                printHash += '\\';//replace /0 with //
+        
+            } else if (this->A[i]=='\n') {
+              continue;
             } else {
                 printHash += this->A[i];
             }
+            
         }
+        printHash += '\n';
+        //something in this for loop above messes up T
 
+        for (int i = 0; i < this->N; i++) {
+           if (this->T[i] >= 0) {
+                printHash += to_string(this->T[i]);
+           }
+           printHash += "\n";
+        }
         return printHash;
-
     } 
-    //Create
-    bool Empty() {
+    bool lexEmpty() {
         if (this->slotsUsed == 0) {
             return true;
         } else {
             return false;
         }
     }
-    bool Full() {
+    bool lexFull() {
         if (this->slotsUsed == N) {
             return true;
         } else {
             return false;
         }
     }
-    //Batch
-    //Comment
-
-
-
 };
-
 class Hashing{
     public:
 
@@ -243,28 +214,28 @@ class Hashing{
         }
 
         int Search(string str){
-            return(test->Search(str));
+            return(test->lexSearch(str));
         }
 
         string Print(){
-            return(test->Print());
+            return(test->lexPrint());
         }
 
         bool Empty(){
-            return(test->Empty());
+            return(test->lexEmpty());
         }
 
         bool Full(){
-            return(test->Full());
+            return(test->lexFull());
         }
         
         void Delete(string str){
-            test->Delete(str);
+            test->lexDelete(str);
             return;
         }
 
         void Insert(string str){
-            test->Insert(str);
+            test->lexInsert(str);
             return;
         }
         
@@ -274,34 +245,31 @@ class Hashing{
             string line;
             inputFile.open(filename);
             if(inputFile.is_open()){
-                while(getline(inputFile,line)){
-
+                while(getline(inputFile,line)){     
                     string command = line.substr(0, line.find(" "));
-
                     if(command.compare("10") == 0){
-                        string str = line.substr(command.length() + 1, line.length() - 1);
+                        string str = line.substr(3, line.length() - command.length() - 2);
                         Insert(str);
                         int index = Search(str);
                         cout << str + "\tadded to slot " + to_string(index) << endl;
                     } else if(command.compare("11") == 0){
-                        string str = line.substr(command.length() + 1, line.length() - 1);
+                        string str = line.substr(3, line.length() - command.length() - 2);
                         int index = Search(str);
                         Delete(str);
                         cout << str + "\tdeleted from slot " + to_string(index) << endl;
                     } else if(command.compare("12") == 0){
-                        string str = line.substr(command.length() + 1, line.length() - 1);
+                        string str = line.substr(3, line.length() - command.length() - 2);
                         int index = Search(str);
-                        cout << str + " ";
                         if(index == -1){
-                            cout << "\tnot found" << endl;
+                            cout << str + "\tnot found" << endl;
                         }
                         else{
-                            cout << "\tfound at slot " + to_string(index) << endl;
+                            cout << str + "\tfound at slot " + to_string(index) << endl;
                         }
                     } else if(command.compare("13") == 0){
-                        cout << Print() << endl ;
+                        cout << Print() << endl;
                     } else if(command.compare("14") == 0){
-                        string str = line.substr(command.length() + 1, line.length() - 1);
+                        string str = line.substr(3, line.length() - command.length() - 2);
                         int N = stoi(str);
                         Create(N);
                     } else if(command.compare("15") == 0){
@@ -315,33 +283,10 @@ class Hashing{
         }
 };
 
-int main(int argc, char* argv[]) {
-    Lexicon* test = new Lexicon(10);
-    test->Insert("word");
-    test->Insert("cum");
-    test->Delete("cum");
-    test->Insert("cum");
-    test->Insert("Patrick");
-    test->Insert("Jill");
-    test->Insert("googoogagaa");
-    test->Insert("happybirthday");
-    test->Insert("hello");
-    test->Insert("phrase");
-    test->Insert("school");
-    test->Insert("car");
-    test->Insert("school");
-    test->Insert("television");
-    
-    cout << "find hello" << endl;
-    cout << test->Search("hello") << endl;
 
-    // test->Delete("hello");
-    // test->Insert("cheese");
-
-    string tryprint = test->Print();
-    
-    cout << tryprint << endl;
-    // test->Insert("word");
-    // string testprint1 = test->Print();
-    // cout << testprint1 << endl;
+int main(int argc, char* argv[]){
+    string filename = argv[1];
+    Hashing* test = new Hashing(filename);
+    test->Batch();
+   return(0);
 }

@@ -1,0 +1,11 @@
+14 11
+10 alex
+10 tom
+10 jerry
+15 ready-to-print
+12 alex
+12 tom
+12 jerry
+12 mary
+11 tom
+13 
